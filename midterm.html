@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+  
+    <title>Election</title>
+      <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+      </head>
+    <style type="text/css">
+       
+        path {
+            stroke: white;
+            stroke-width: .1px;
+        }
+
+        path.fade {
+            display: none;
+        }
+
+       svg {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+
+        }
+        body{ margin-left: auto;
+        padding: 20px 50px;}
+        
+        h1{font-family: sans-serif; font-size: 40px; font-weight: 500}
+        h2{font-family: sans-serif; font-size: 30px; font-weight: 200}
+        p{font-family: sans-serif; font-size: 18px; font-weight: 100}
+        #comment{font-family: sans-serif; font-size: 12px; font-weight: 100}
+        #byline{font-family: sans-serif; font-size: 15px; font-weight: 400}
+        #date{font-family: sans-serif; font-size: 15px; font-weight: 100}
+        
+            
+    </style>
+    
+
+
+<body>
+    <h1>How Three California Regions Voted in the 2020 Presidential Election</h1> 
+     <br/>
+    <p id ="byline"> <em>By Laurine Lassalle  </em></p> 
+    <p id ="date"><em>November 15, 2020</em> </p> 
+    
+    <br/>
+    
+<p> Preliminary election results show that more than 16.8 million Californians voted in the 2020 election. Nearly 64% voted for Joe Biden while only 34% voted for Donald Trump. This is not a surprising outcome for California, known for being a blue state, but like other parts of the country, the election results show a persisting difference in political preferences between rural and urban areas. </p> <br/>
+<h2> Bay Area Counties</h2>
+      <div id="area1" class="collapseExample"></div>
+    <p id ="textbay"> Preliminary election results show that more than three-fourths of the Bay Area counties residents voted for Joe Biden in the 2020 election, which makes the Bay Area the "bluest" part of California. In San Francisco County, Joe Biden won 85.3% of the votes while 12.7% of the ballots went to Donald Trump. </p><br/>
+    <h2> Southern California Counties</h2>
+    <div id="area2" class="collapseExample"></div>
+    <p id ="socal"> Most voters in Southern California voted for Joe Biden, over 60%, but to a lesser extent than Bay Area residents. Approximately 71% of the votes went to Joe Biden and 27% to Donald Trump in Los Angeles County, but more than 44% of the ballots in Orange and Riverside counties went to Donald Trump. </p><br/>
+     <h2> Central Valley Counties</h2>
+    <div id="area3" class="collapseExample"></div>
+    <p id ="central"> The Central Valley is California's agricultural heart located between the two main urban centers, San Francisco and Los Angeles-San Diego. Central Valley counties are more conservative and rural than the Bay Area or Southern California. Joe Biden won the region by less than 2 percentage points. The democratic candidate won Fresno, Merced, Stanislaus and San Joaquin counties, while Donald Trump won the counties of Kern, Tulare, Kings and Madera. The two candidates have a narrow lead in these counties as they won no more than 56% of each county's votes.</p><br/>
+     <p id="comment">Note: We have selected the three candidates who received the most votes. Eight counties were chosen to represent each region. Election results are not official yet. <br/>
+         Source: <a href="https://electionresults.sos.ca.gov/returns/maps/president">California Secretary of State</a></p>
+       
+
+
+    <script src="js/d3.v5.min.js"></script>
+
+    <script>
+        var margin = {
+                top: 10,
+                right: 10,
+                bottom: 10,
+                left: 10
+            },
+            width = 800 - margin.left - margin.right,
+            height = 900 - margin.top - margin.bottom,
+            innerRadius = Math.min(width, height) * .35, //35% of smallest measurement
+            outerRadius = innerRadius * 1.1; //110% of innerradius
+
+        var bayarea = d3.select("#area1").append("svg")
+            .attr("id", "bayarea")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+            .append("g")
+            .attr("class", "chordgraph")
+            .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+        d3.csv("bayarea.csv").then(function(d) {
+
+            /*
+             * IMPORTANT! Specify your first column of data here (see example data)
+             *
+             */
+            var firstColumn = "first_column";
+
+            //store column names
+            var fc = d.map(function(d) {
+                    return d[firstColumn];
+                }),
+                fo = fc.slice(0),
+                maxtrix_size = (Object.keys(d[0]).length - 1) + fc.length,
+                matrix = [];
+
+            //Create an empty square matrix of zero placeholders, the size of the data
+            for (var i = 0; i < maxtrix_size; i++) {
+                matrix.push(new Array(maxtrix_size + 1).join('0').split('').map(parseFloat));
+            }
+
+            //go through the data and convert all to numbers except "first_column"
+            for (var i = 0; i < d.length; i++) {
+
+                var j = d.length; //counter
+
+                for (var prop in d[i]) {
+                    if (prop != firstColumn) {
+                        fc.push(prop);
+                        matrix[i][j] = +d[i][prop];
+                        matrix[j][i] = +d[i][prop];
+                        j++;
+                    }
+                }
+            }
+
+            //set color scale. More color options: https://github.com/d3/d3-scale-chromatic
+            //  var color = d3.scaleOrdinal(d3.schemeAccent)
+            var color = d3.scaleOrdinal(["#3182bd", "#de2d26", "#feb24c"])
+            //d3 chord generator
+            var chord = d3.chord()
+                .padAngle(0.01)
+                .sortSubgroups(d3.descending);
+
+            //apply the matrix
+            var chords = chord(matrix);
+
+            //each ribbon generator
+            var ribbon = d3.ribbon()
+                .radius(innerRadius);
+
+            //outer rim arc
+            var arc = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(innerRadius + 20);
+
+            //add each of the groupings for outer rim arcs
+            var group = bayarea.append("g")
+                .selectAll("g")
+                .data(chords.groups)
+                .enter()
+                .append("g");
+            
+          
+
+            //add each outer rim arc path
+            group.append("path")
+                .attr("fill", function(d) {
+                    return (d.index + 1) > fo.length ? color(d.index) : "#ccc";
+                })
+                .attr("stroke", function(d) {
+                    return color(d.index);
+                })
+                .style("opacity", 0.8)
+                .attr("d", arc)
+                .style("cursor", "pointer")
+                .on("mouseover", function(d, i) {
+                    ribbons.classed("fade", function(d) {
+                        return d.source.index != i && d.target.index != i;
+    
+                    })
+                
+                });
+
+
+            //add each ribbon
+            var ribbons = bayarea.append("g")
+                .attr("fill-opacity", 0.7)
+                .selectAll("path")
+                .data(chords)
+                .enter()
+                .append("path")
+                .attr("d", ribbon)
+                .attr("fill", function(d) {
+                    return color(d.target.index);
+                })
+                .attr("stroke", function(d) {
+                    return d3.rgb(color(d.target.index)).darker();
+                });
+
+            //add the text labels
+            group.append("text")
+                .each(function(d) {
+                    return d.angle = (d.startAngle + d.endAngle) / 2;
+                })
+                .attr("dy", ".35em")
+                .attr("class", "text")
+                .style("pointer-events", "none")
+                .attr("text-anchor", function(d) {
+                    return d.angle > Math.PI ? "end" : "start";
+                })
+                .attr("transform", function(d, i) {
+                    console.log(fc[i], d);
+                    //rotate each label around the circle           
+                    return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
+                        "translate(" + (outerRadius + 10) + ")" +
+                        (d.angle > Math.PI ? "rotate(180)" : "");
+
+                })
+                .text(function(d, i) {
+                    //set the text content
+                    return fc[i];
+                })
+                .style("font-family", "sans-serif")
+                .style("font-size", "14px");
+           
+       
+        }); 
+        
+         
+  
+        var southcoast = d3.select("#area2").append("svg")
+            .attr("id", "southcoast")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+            .append("g")
+            .attr("class", "chordgraph")
+            .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+        d3.csv("southcoast.csv").then(function(d) {
+
+            /*
+             * IMPORTANT! Specify your first column of data here (see example data)
+             *
+             */
+            var firstColumn = "first_column";
+
+            //store column names
+            var fc = d.map(function(d) {
+                    return d[firstColumn];
+                }),
+                fo = fc.slice(0),
+                maxtrix_size = (Object.keys(d[0]).length - 1) + fc.length,
+                matrix = [];
+
+            //Create an empty square matrix of zero placeholders, the size of the data
+            for (var i = 0; i < maxtrix_size; i++) {
+                matrix.push(new Array(maxtrix_size + 1).join('0').split('').map(parseFloat));
+            }
+
+            //go through the data and convert all to numbers except "first_column"
+            for (var i = 0; i < d.length; i++) {
+
+                var j = d.length; //counter
+
+                for (var prop in d[i]) {
+                    if (prop != firstColumn) {
+                        fc.push(prop);
+                        matrix[i][j] = +d[i][prop];
+                        matrix[j][i] = +d[i][prop];
+                        j++;
+                    }
+                }
+            }
+
+            //set color scale. More color options: https://github.com/d3/d3-scale-chromatic
+            //  var color = d3.scaleOrdinal(d3.schemeAccent)
+            var color = d3.scaleOrdinal(["#3182bd", "#de2d26", "#feb24c"])
+            //d3 chord generator
+            var chord = d3.chord()
+                .padAngle(0.01)
+                .sortSubgroups(d3.descending);
+
+            //apply the matrix
+            var chords = chord(matrix);
+
+            //each ribbon generator
+            var ribbon = d3.ribbon()
+                .radius(innerRadius);
+
+            //outer rim arc
+            var arc = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(innerRadius + 20);
+
+            //add each of the groupings for outer rim arcs
+            var group = southcoast.append("g")
+                .selectAll("g")
+                .data(chords.groups)
+                .enter()
+                .append("g");
+
+            //add each outer rim arc path
+            group.append("path")
+                .attr("fill", function(d) {
+                    return (d.index + 1) > fo.length ? color(d.index) : "#ccc";
+                })
+                .attr("stroke", function(d) {
+                    return color(d.index);
+                })
+                .style("opacity", 0.8)
+                .attr("d", arc)
+                .style("cursor", "pointer")
+                .on("mouseover", function(d, i) {
+                    ribbons.classed("fade", function(d) {
+                        return d.source.index != i && d.target.index != i;
+                    });
+                chord.append("title").text(function(d) {
+		 return counties[d.source.index].name
+		 + " → " + counties[d.target.index].name
+		 + ": " + (d.source.value)
+		 + "\n" + counties[d.target.index].name
+		 + " → " + counties[d.source.index].name
+		 + ": " + (d.target.value);
+		 });
+                function mouseover(d, i) {
+		chord.classed("fade", function(d) {
+		return p.source.index != i
+		&& p.target.index != i;
+		});
+		}
+               
+             });
+
+            //add each ribbon
+            var ribbons = southcoast.append("g")
+                .attr("fill-opacity", 0.7)
+                .selectAll("path")
+                .data(chords)
+                .enter()
+                .append("path")
+                .attr("d", ribbon)
+                .attr("fill", function(d) {
+                    return color(d.target.index);
+                })
+                .attr("stroke", function(d) {
+                    return d3.rgb(color(d.target.index)).darker();
+                });
+
+            //add the text labels
+            group.append("text")
+                .each(function(d) {
+                    return d.angle = (d.startAngle + d.endAngle) / 2;
+                })
+                .attr("dy", ".35em")
+                .attr("class", "text")
+                .style("pointer-events", "none")
+                .attr("text-anchor", function(d) {
+                    return d.angle > Math.PI ? "end" : "start";
+                })
+                .attr("transform", function(d, i) {
+                    console.log(fc[i], d);
+                    //rotate each label around the circle           
+                    return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
+                        "translate(" + (outerRadius + 10) + ")" +
+                        (d.angle > Math.PI ? "rotate(180)" : "");
+
+                })
+                .text(function(d, i) {
+                    //set the text content
+                    return fc[i];
+                })
+                .style("font-family", "sans-serif")
+                .style("font-size", "14px");
+       
+        });
+         var centralvalley = d3.select("#area3").append("svg")
+            .attr("id", "centralvalley")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")")
+            .append("g")
+            .attr("class", "chordgraph")
+            .attr("transform", "translate(" + width / 2 + "," + height / 2 + ")");
+
+        d3.csv("centralvalley.csv").then(function(d) {
+
+            /*
+             * IMPORTANT! Specify your first column of data here (see example data)
+             *
+             */
+            var firstColumn = "first_column";
+
+            //store column names
+            var fc = d.map(function(d) {
+                    return d[firstColumn];
+                }),
+                fo = fc.slice(0),
+                maxtrix_size = (Object.keys(d[0]).length - 1) + fc.length,
+                matrix = [];
+
+            //Create an empty square matrix of zero placeholders, the size of the data
+            for (var i = 0; i < maxtrix_size; i++) {
+                matrix.push(new Array(maxtrix_size + 1).join('0').split('').map(parseFloat));
+            }
+
+            //go through the data and convert all to numbers except "first_column"
+            for (var i = 0; i < d.length; i++) {
+
+                var j = d.length; //counter
+
+                for (var prop in d[i]) {
+                    if (prop != firstColumn) {
+                        fc.push(prop);
+                        matrix[i][j] = +d[i][prop];
+                        matrix[j][i] = +d[i][prop];
+                        j++;
+                    }
+                }
+            }
+
+            //set color scale. More color options: https://github.com/d3/d3-scale-chromatic
+            //  var color = d3.scaleOrdinal(d3.schemeAccent)
+            var color = d3.scaleOrdinal(["#3182bd", "#de2d26", "#feb24c"])
+            //d3 chord generator
+            var chord = d3.chord()
+                .padAngle(0.01)
+                .sortSubgroups(d3.descending);
+
+            //apply the matrix
+            var chords = chord(matrix);
+
+            //each ribbon generator
+            var ribbon = d3.ribbon()
+                .radius(innerRadius);
+
+            //outer rim arc
+            var arc = d3.arc()
+                .innerRadius(innerRadius)
+                .outerRadius(innerRadius + 20);
+
+            //add each of the groupings for outer rim arcs
+            var group = centralvalley.append("g")
+                .selectAll("g")
+                .data(chords.groups)
+                .enter()
+                .append("g");
+            
+          
+
+            //add each outer rim arc path
+            group.append("path")
+                .attr("fill", function(d) {
+                    return (d.index + 1) > fo.length ? color(d.index) : "#ccc";
+                })
+                .attr("stroke", function(d) {
+                    return color(d.index);
+                })
+                .style("opacity", 0.8)
+                .attr("d", arc)
+                .style("cursor", "pointer")
+                .on("mouseover", function(d, i) {
+                    ribbons.classed("fade", function(d) {
+                        return d.source.index != i && d.target.index != i;
+    
+                    })
+                
+                });
+
+
+            //add each ribbon
+            var ribbons = centralvalley.append("g")
+                .attr("fill-opacity", 0.7)
+                .selectAll("path")
+                .data(chords)
+                .enter()
+                .append("path")
+                .attr("d", ribbon)
+                .attr("fill", function(d) {
+                    return color(d.target.index);
+                })
+                .attr("stroke", function(d) {
+                    return d3.rgb(color(d.target.index)).darker();
+                });
+
+            //add the text labels
+            group.append("text")
+                .each(function(d) {
+                    return d.angle = (d.startAngle + d.endAngle) / 2;
+                })
+                .attr("dy", ".35em")
+                .attr("class", "text")
+                .style("pointer-events", "none")
+                .attr("text-anchor", function(d) {
+                    return d.angle > Math.PI ? "end" : "start";
+                })
+                .attr("transform", function(d, i) {
+                    console.log(fc[i], d);
+                    //rotate each label around the circle           
+                    return "rotate(" + (d.angle * 180 / Math.PI - 90) + ")" +
+                        "translate(" + (outerRadius + 10) + ")" +
+                        (d.angle > Math.PI ? "rotate(180)" : "");
+
+                })
+                .text(function(d, i) {
+                    //set the text content
+                    return fc[i];
+                })
+                .style("font-family", "sans-serif")
+                .style("font-size", "14px");
+           
+       
+        }); 
+        
+         
+        
+    </script>
+    
+   
+
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"
+ src="https://cdn.jsdelivr.net/gh/sebt3/d3-bootstrap@0.5.2/dist/d3-bootstrap-withextra.min.js"> </script>
+    
+   
+</body></html>
